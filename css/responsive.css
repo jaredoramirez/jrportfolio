@@ -25,6 +25,12 @@
     width: 100% !important;
     height: auto !important;
   }
+  .toGo {
+    font-size: 1em;
+  }
+  .textup {
+    margin-top: -20px;
+  }
 
 }
 @media (max-width: 480px) {

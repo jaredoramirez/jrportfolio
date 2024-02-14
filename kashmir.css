@@ -1,0 +1,37 @@
+body {
+    background: #292d36;
+    color: #d2d2d2;
+    font-family: 'Open Sans', sans-serif;
+    margin: 0;
+    padding: 0 100px;
+}
+a {
+    color: #d44545;
+    text-decoration: none;
+    transition: 0.2s;
+  }
+  a:hover {
+    color: #eee;
+  }
+  h2 {
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 1em;
+  }
+  b {
+      color: #fff;
+  }
+
+  h3 {
+    text-align: center;
+    width: 100%;
+    font-size: 2em;
+    z-index: 10000;
+  }
+  .imaged {
+    margin: 0 auto;
+    display: block;
+  }
+  .textup {
+    margin-top: -100px;
+  }
