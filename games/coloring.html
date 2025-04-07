@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Coloring Page</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      font-family: sans-serif;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    canvas {
+      touch-action: none;
+      border: 1px solid #ccc;
+      display: block;
+      margin: 0 auto;
+      cursor: crosshair;
+      -webkit-user-select: none;
+      user-select: none;
+      width: 90vmin;
+      height: 90vmin;
+      max-width: 100%;
+      max-height: 100%;
+    }
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .controls label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Color the Easter Egg Hunt!</h2>
+  <div class="controls">
+    <input type="color" id="colorPicker" value="#ff0000" />
+    <label>Brush Size: <input type="range" id="brushSize" min="1" max="50" value="10" /></label>
+    <label>Zoom: <input type="range" id="zoomControl" min="1" max="4" step="0.1" value="1" /></label>
+    <label><input type="checkbox" id="eraserToggle" /> Eraser</label>
+    <button onclick="undo()">Undo</button>
+    <button onclick="clearCanvas()">Clear</button>
+    <button onclick="downloadImage()">Download</button>
+  </div>
+  <canvas id="canvas" width="800" height="800"></canvas>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const colorPicker = document.getElementById('colorPicker');
+    const brushSize = document.getElementById('brushSize');
+    const zoomControl = document.getElementById('zoomControl');
+    const eraserToggle = document.getElementById('eraserToggle');
+
+    const lineArt = new Image();
+    lineArt.src = 'images/9-HKegghunt-coloring.png';
+    lineArt.onload = () => {
+      redraw();
+    };
+
+    let drawing = false;
+    let paths = [];
+    let currentPath = [];
+    let zoom = 1;
+    let panX = 0;
+    let panY = 0;
+    let isPanning = false;
+    let lastPan = { x: 0, y: 0 };
+
+    function startDrawing(x, y) {
+      if (isPanning) return;
+      drawing = true;
+      const color = eraserToggle.checked ? '#ffffff' : colorPicker.value;
+      currentPath = [{ x: (x - panX) / zoom, y: (y - panY) / zoom, color, size: brushSize.value }];
+    }
+
+    function draw(x, y) {
+      if (!drawing || isPanning) return;
+      const color = eraserToggle.checked ? '#ffffff' : colorPicker.value;
+      currentPath.push({ x: (x - panX) / zoom, y: (y - panY) / zoom, color, size: brushSize.value });
+      redraw();
+    }
+
+    function stopDrawing() {
+      if (drawing) paths.push(currentPath);
+      drawing = false;
+    }
+
+    function redraw() {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height); // Fill with white background
+      ctx.setTransform(zoom, 0, 0, zoom, panX, panY);
+      paths.forEach(path => drawPath(path));
+      drawPath(currentPath);
+      ctx.drawImage(lineArt, 0, 0, canvas.width, canvas.height);
+    }
+
+    function drawPath(path) {
+      if (path.length < 2) return;
+      ctx.strokeStyle = path[0].color;
+      ctx.lineCap = 'round';
+      ctx.lineWidth = path[0].size;
+      ctx.beginPath();
+      ctx.moveTo(path[0].x, path[0].y);
+      for (let i = 1; i < path.length; i++) {
+        ctx.lineTo(path[i].x, path[i].y);
+      }
+      ctx.stroke();
+    }
+
+    function clearCanvas() {
+      paths = [];
+      currentPath = [];
+      redraw();
+    }
+
+    function undo() {
+      paths.pop();
+      redraw();
+    }
+
+    function downloadImage() {
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCanvas.width = canvas.width;
+      tempCanvas.height = canvas.height;
+      tempCtx.fillStyle = '#ffffff';
+      tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height); // White background
+      tempCtx.drawImage(canvas, 0, 0);
+      const link = document.createElement('a');
+      link.download = 'colored-image.png';
+      link.href = tempCanvas.toDataURL();
+      link.click();
+    }
+
+    function getPos(evt) {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+      const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      return {
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY
+      };
+    }
+
+    canvas.addEventListener('mousedown', e => {
+      if (e.button === 1 || e.ctrlKey) {
+        isPanning = true;
+        lastPan = getPos(e);
+        return;
+      }
+      startDrawing(...Object.values(getPos(e)));
+    });
+
+    canvas.addEventListener('mousemove', e => {
+      if (isPanning) {
+        const pos = getPos(e);
+        panX += (pos.x - lastPan.x);
+        panY += (pos.y - lastPan.y);
+        lastPan = pos;
+        redraw();
+        return;
+      }
+      draw(...Object.values(getPos(e)));
+    });
+
+    canvas.addEventListener('mouseup', () => { isPanning = false; stopDrawing(); });
+    canvas.addEventListener('mouseout', () => { isPanning = false; stopDrawing(); });
+
+    canvas.addEventListener('touchstart', e => {
+      if (e.touches.length === 2) {
+        isPanning = true;
+        lastPan = getPos(e);
+        return;
+      }
+      e.preventDefault();
+      startDrawing(...Object.values(getPos(e)));
+    });
+
+    canvas.addEventListener('touchmove', e => {
+      if (isPanning && e.touches.length === 2) {
+        const pos = getPos(e);
+        panX += (pos.x - lastPan.x);
+        panY += (pos.y - lastPan.y);
+        lastPan = pos;
+        redraw();
+        return;
+      }
+      e.preventDefault();
+      draw(...Object.values(getPos(e)));
+    });
+
+    canvas.addEventListener('touchend', e => {
+      if (e.touches.length < 2) isPanning = false;
+      stopDrawing();
+    });
+
+    zoomControl.addEventListener('input', () => {
+      const prevZoom = zoom;
+      zoom = parseFloat(zoomControl.value);
+      const canvasCenterX = canvas.width / 2;
+      const canvasCenterY = canvas.height / 2;
+      panX = canvasCenterX - ((canvasCenterX - panX) / prevZoom) * zoom;
+      panY = canvasCenterY - ((canvasCenterY - panY) / prevZoom) * zoom;
+      redraw();
+    });
+  </script>
+</body>
+</html>

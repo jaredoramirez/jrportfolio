@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Egg Catcher Game</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      background-color: #87CEEB;
+      touch-action: none;
+    }
+    #gameContainer {
+      position: relative;
+      width: 100vw;
+      height: 80vh;
+      margin: 0 auto;
+      background: url('images/background.jpg') repeat-y;
+      background-size: cover;
+      overflow: hidden;
+      touch-action: none;
+    }
+    .player {
+      position: absolute;
+      width: 80px;
+      height: 120px;
+      background-color: #ffcc00;
+      border-radius: 10px;
+      bottom: 0;
+    }
+    .egg, .powerup {
+      position: absolute;
+      width: 40px;
+      height: 50px;
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: contain;
+      z-index: 100011;
+      display: block;
+    }
+    .egg {
+      background-image: url('images/egg.png');
+    }
+    .golden { background-image: url('images/golden-egg.png'); }
+    .clock { background-image: url('images/clock-egg.png'); }
+    .magnet { background-image: url('images/magnet-egg.png'); }
+    #score, #timer, #level, #combo {
+      position: absolute;
+      top: 10px;
+      font-size: 20px;
+      font-weight: bold;
+      background-color: rgba(255, 255, 255, 0.7);
+      padding: 5px 10px;
+      border-radius: 8px;
+    }
+    #score { left: 10px; }
+    #timer { left: 300px; }
+    #level { right: 10px; }
+    #combo { top: 50px; left: 10px; display: none; color: red; }
+    #controls {
+      position: sticky;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      margin: auto;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      z-index: 100012;
+      padding: 10px;
+      background-color: rgba(0, 0, 0, 0.2);
+    }
+    .control-button {
+      width: 50px;
+      height: 50px;
+      background-color: rgba(255, 255, 255, 0.8);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: bold;
+      user-select: none;
+      cursor: pointer;
+    }
+    #messageScreen {
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      font-size: 24px;
+      font-weight: bold;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 100020;
+    }
+    #messageScreen button {
+      margin-top: 20px;
+      font-size: 20px;
+      padding: 10px 20px;
+    }
+  </style>
+</head>
+<body>
+  <div id="gameContainer">
+    <div id="score">Score: 0</div>
+    <div id="timer">Time: 60</div>
+    <div id="level">Level: 1</div>
+    <div id="combo">Combo x1</div>
+    <div id="player" class="player"></div>
+    <div id="controls">
+      <div class="control-button" onclick="movePlayer('left')">◀</div>
+      <div class="control-button" onclick="movePlayer('up')">▲</div>
+      <div class="control-button" onclick="movePlayer('down')">▼</div>
+      <div class="control-button" onclick="movePlayer('right')">▶</div>
+    </div>
+    <div id="messageScreen">
+      <div id="messageText"></div>
+      <button onclick="handleNextAction()">Next</button>
+    </div>
+    <audio id="bgMusic" src="images/music.mp3" autoplay loop></audio>
+  </div>
+
+  <script>
+    const gameContainer = document.getElementById('gameContainer');
+    const player = document.getElementById('player');
+    const scoreDisplay = document.getElementById('score');
+    const timerDisplay = document.getElementById('timer');
+    const levelDisplay = document.getElementById('level');
+    const comboDisplay = document.getElementById('combo');
+    const bgMusic = document.getElementById('bgMusic');
+    const messageScreen = document.getElementById('messageScreen');
+    const messageText = document.getElementById('messageText');
+    const messageButton = messageScreen.querySelector('button');
+
+    const playerSpeed = 10;
+    let playerX = 320;
+    let playerY = 10;
+    let score = 0;
+    let level = 1;
+    let eggInterval = null;
+    let timerInterval = null;
+    let eggFallSpeed = 5;
+    let dropRate = 1500;
+    let timeLeft = 60;
+    let combo = 0;
+    let magnet = false;
+    let goal = 300;
+
+    function updateDisplays() {
+      scoreDisplay.textContent = `Score: ${score} / ${goal}`;
+      timerDisplay.textContent = `Time: ${timeLeft}`;
+      levelDisplay.textContent = `Level: ${level}`;
+    }
+
+    function showCombo() {
+      comboDisplay.style.display = 'block';
+      comboDisplay.textContent = `Combo x${combo}`;
+      setTimeout(() => {
+        comboDisplay.style.display = 'none';
+      }, 1000);
+    }
+
+    function movePlayer(dir) {
+      const containerRect = gameContainer.getBoundingClientRect();
+      const maxX = containerRect.width - 80;
+      const maxY = containerRect.height / 2;
+
+      if (dir === 'left' && playerX > 0) playerX -= playerSpeed;
+      if (dir === 'right' && playerX < maxX) playerX += playerSpeed;
+      if (dir === 'up' && playerY < maxY) playerY += playerSpeed;
+      if (dir === 'down' && playerY > 0) playerY -= playerSpeed;
+
+      player.style.left = playerX + 'px';
+      player.style.bottom = playerY + 'px';
+    }
+
+    function showMessage(message, nextAction) {
+      messageText.textContent = message;
+      messageScreen.style.display = 'flex';
+      messageButton.onclick = nextAction;
+    }
+
+    function createEggOrPowerup() {
+      const chance = Math.random();
+      const egg = document.createElement('div');
+      if (chance < 0.1) {
+        egg.classList.add('powerup');
+        if (chance < 0.03) egg.classList.add('golden');
+        else if (chance < 0.06) egg.classList.add('clock');
+        else egg.classList.add('magnet');
+      } else {
+        egg.classList.add('egg');
+      }
+      egg.style.left = Math.floor(Math.random() * 680) + 'px';
+      egg.style.top = '-50px';
+      gameContainer.appendChild(egg);
+
+      let y = -50;
+      const fall = setInterval(() => {
+        y += eggFallSpeed;
+        egg.style.top = y + 'px';
+
+        if (y > gameContainer.offsetHeight) {
+          clearInterval(fall);
+          egg.remove();
+          combo = 0;
+        }
+
+        const eggRect = egg.getBoundingClientRect();
+        const playerRect = player.getBoundingClientRect();
+        if (
+          eggRect.bottom > playerRect.top &&
+          eggRect.top < playerRect.bottom &&
+          eggRect.right > playerRect.left &&
+          eggRect.left < playerRect.right
+        ) {
+          clearInterval(fall);
+          egg.remove();
+          if (egg.classList.contains('golden')) score += 500;
+          else if (egg.classList.contains('clock')) timeLeft += 5;
+          else if (egg.classList.contains('magnet')) {
+            magnet = true;
+            setTimeout(() => magnet = false, 5000);
+          } else {
+            score += 100;
+            combo++;
+            if (combo > 1) showCombo();
+          }
+          updateDisplays();
+        }
+      }, 30);
+    }
+
+    function startLevel() {
+      clearInterval(eggInterval);
+      clearInterval(timerInterval);
+      goal = 300 + (level - 1) * 200;
+      score = 0;
+      timeLeft = 60 - (level - 1) * 10;
+      updateDisplays();
+      messageScreen.style.display = 'none';
+
+      eggInterval = setInterval(createEggOrPowerup, dropRate);
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        updateDisplays();
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          clearInterval(eggInterval);
+          if (score >= goal) {
+            if (level < 5) {
+              showMessage(`Level ${level} complete!`, () => {
+                level++;
+                eggFallSpeed += 2;
+                dropRate = Math.max(400, dropRate - 200);
+                startLevel();
+              });
+            } else {
+              showMessage('You Win!!!', () => location.reload());
+            }
+          } else {
+            showMessage(`You didn't reach your goal. You needed ${goal} points.`, startLevel);
+          }
+        }
+      }, 1000);
+    }
+
+    window.onload = () => {
+      player.style.left = playerX + 'px';
+      player.style.bottom = playerY + 'px';
+      updateDisplays();
+      startLevel();
+    };
+  </script>
+</body>
+</html>

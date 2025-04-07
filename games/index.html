@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Easter Egg Hunt - Portrait</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      width: 100%;
+      font-family: sans-serif;
+      overflow: hidden;
+      background: #dfffe0;
+    }
+
+    #game {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      max-width: 480px;
+      margin: auto;
+      background: #dfffe0;
+      border-left: 2px solid #aaa;
+      border-right: 2px solid #aaa;
+    }
+
+    .player, .egg {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+    }
+
+    .player {
+      background: blue;
+      transition: left 0.1s, top 0.1s;
+      z-index: 2;
+    }
+
+    .egg {
+      background: pink;
+      z-index: 1;
+    }
+
+    #questionModal {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6);
+      display: none;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      max-width: 90%;
+      text-align: center;
+    }
+
+    .modal-content button {
+      margin-top: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+    }
+
+    #controls {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: grid;
+      grid-template-columns: 60px 60px 60px;
+      grid-template-rows: 60px 60px;
+      gap: 10px;
+      z-index: 5;
+    }
+
+    .btn {
+      background: #ccc;
+      border: none;
+      font-size: 24px;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    .up    { grid-column: 2; grid-row: 1; }
+    .left  { grid-column: 1; grid-row: 2; }
+    .down  { grid-column: 2; grid-row: 2; }
+    .right { grid-column: 3; grid-row: 2; }
+
+    @media (min-width: 768px) {
+      #controls { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="game">
+  <div class="player" id="player" style="left: 20px; top: 20px;"></div>
+  <div class="egg" data-character="Blippi"></div>
+  <div class="egg" data-character="Cocomelon"></div>
+  <div class="egg" data-character="Talking Tom"></div>
+  <div class="egg" data-character="Like Nastya"></div>
+  <div class="egg" data-character="Lego"></div>
+
+  <!-- Mobile Touch Controls -->
+  <div id="controls">
+    <button class="btn up"    onclick="movePlayer('up')">⬆️</button>
+    <button class="btn left"  onclick="movePlayer('left')">⬅️</button>
+    <button class="btn down"  onclick="movePlayer('down')">⬇️</button>
+    <button class="btn right" onclick="movePlayer('right')">➡️</button>
+  </div>
+</div>
+
+<!-- Modal for Question -->
+<div id="questionModal">
+  <div class="modal-content">
+    <div id="questionText">Question here</div>
+    <button onclick="closeModal()">Close</button>
+  </div>
+</div>
+
+<script>
+  const player = document.getElementById('player');
+  const eggs = document.querySelectorAll('.egg');
+  const modal = document.getElementById('questionModal');
+  const questionText = document.getElementById('questionText');
+
+  let posX = 20, posY = 20;
+  const step = 20;
+
+  function updatePlayerPosition() {
+    const bounds = document.getElementById('game').getBoundingClientRect();
+    const maxW = bounds.width - 40;
+    const maxH = bounds.height - 40;
+    posX = Math.max(0, Math.min(posX, maxW));
+    posY = Math.max(0, Math.min(posY, maxH));
+    player.style.left = posX + 'px';
+    player.style.top = posY + 'px';
+    checkProximity();
+  }
+
+  function movePlayer(direction) {
+    if (direction === 'right') posX += step;
+    if (direction === 'left') posX -= step;
+    if (direction === 'down') posY += step;
+    if (direction === 'up') posY -= step;
+    updatePlayerPosition();
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight') movePlayer('right');
+    if (e.key === 'ArrowLeft')  movePlayer('left');
+    if (e.key === 'ArrowDown')  movePlayer('down');
+    if (e.key === 'ArrowUp')    movePlayer('up');
+  });
+
+  function checkProximity() {
+    const playerCenterX = posX + 20;
+    const playerCenterY = posY + 20;
+
+    eggs.forEach(egg => {
+      const eggX = egg.offsetLeft + 20;
+      const eggY = egg.offsetTop + 20;
+
+      const dx = playerCenterX - eggX;
+      const dy = playerCenterY - eggY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      if (distance <= 5) {
+        showQuestion(egg.getAttribute('data-character'));
+        egg.remove();
+      }
+    });
+  }
+
+  function showQuestion(character) {
+    questionText.textContent = `What show is ${character} from?`;
+    modal.style.display = 'flex';
+  }
+
+  function closeModal() {
+    modal.style.display = 'none';
+  }
+
+  function randomizeEggPositions() {
+    const gameBounds = document.getElementById('game').getBoundingClientRect();
+    const maxX = gameBounds.width - 40;
+    const maxY = gameBounds.height - 40;
+
+    eggs.forEach(egg => {
+      const randomX = Math.floor(Math.random() * maxX);
+      const randomY = Math.floor(Math.random() * maxY);
+
+      egg.style.left = randomX + 'px';
+      egg.style.top = randomY + 'px';
+    });
+  }
+
+  window.onload = function() {
+    randomizeEggPositions();  // Randomize egg positions on page load
+    updatePlayerPosition();    // Initialize player position
+  };
+</script>
+
+</body>
+</html>
